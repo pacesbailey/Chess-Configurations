@@ -1,9 +1,14 @@
 from pathlib import Path
-from dataloader import DataLoader
+from preprocessing import preprocess_dataset
 
 
-DATA_PATH: Path = Path("dataset")
-TRAIN_PATH: Path = Path("dataset/train")
-dataloader: DataLoader = DataLoader(DATA_PATH)
-image_labels: list = dataloader.get_image_labels(TRAIN_PATH)
-print(len(image_labels))
+TRAIN_PATH: Path = Path("data/train")
+TEST_PATH: Path = Path("data/test")
+
+
+def main():
+    x_train, y_train, x_test, y_test = preprocess_dataset(TRAIN_PATH, TEST_PATH)
+
+
+if __name__ == "__main__":
+    main()
