@@ -2,7 +2,53 @@ import numpy as np
 
 from keras import layers, models
 from pathlib import Path
-from preprocessing import transform_image, transform_label
+from preprocessing import preprocess_image, encode_label
+
+
+def initialize_vgg(shape: tuple) -> models.Sequential:
+    """
+    Description
+
+    Args:
+        shape (tuple):
+
+    Returns:
+        models.Sequential:
+    """
+    model = models.Sequential(
+        [
+            layers.Conv2D(64, (3,3), padding="same", activation="relu", input_shape=shape),
+            layers.Conv2D(64, (3,3), padding="same", activation="relu"),
+            layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding="same"),
+            layers.Conv2D(128, (3,3), padding="same", activation="relu"),
+            layers.Conv2D(128, (3,3), padding="same", activation="relu"),
+            layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding="same"),
+            layers.Conv2D(256, (3,3), padding="same", activation="relu"),
+            layers.Conv2D(256, (3,3), padding="same", activation="relu"),
+            layers.Conv2D(256, (3,3), padding="same", activation="relu"),
+            layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding="same"),
+            layers.Conv2D(512, (3,3), padding="same", activation="relu"),
+            layers.Conv2D(512, (3,3), padding="same", activation="relu"),
+            layers.Conv2D(512, (3,3), padding="same", activation="relu"),
+            layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding="same"),
+            layers.Conv2D(512, (3,3), padding="same", activation="relu"),
+            layers.Conv2D(512, (3,3), padding="same", activation="relu"),
+            layers.Conv2D(512, (3,3), padding="same", activation="relu"),
+            layers.MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding="same"),
+            layers.Flatten(),
+            layers.Dense(4096, activation="relu"),
+            layers.Dense(4096, activation="relu"),
+            layers.Dense(13, activation="softmax")
+        ]
+    )
+
+    model.compile(
+        optimizer="adam",
+        loss="categorical_crossentropy",
+        metrics=["accuracy"]
+    )
+
+    return model
 
 
 def initialize_simple(shape: tuple) -> models.Sequential:
@@ -46,12 +92,20 @@ def generator(directory: Path, image_size: int, percentage: float) -> None:
         directory (Path): path object leading to directory with contains 
                           the training or validation data
         image_size (int): size to which the images must be reduced
-        percentage (float): 
+        percentage (float): limits the amount of the dataset to be used
     """
     directory: list = sorted(directory.iterdir())
 
     for image in directory[:int(len(directory) * percentage)]:
-        x: np.ndarray = transform_image(image, image_size)
-        y: str = transform_label(image.stem)
+        x: np.ndarray = preprocess_image(image, image_size)
+        y: str = encode_label(image.stem)
 
         yield x, y
+
+
+def main() -> None:
+    pass
+
+
+if __name__ == "__main__":
+    main()

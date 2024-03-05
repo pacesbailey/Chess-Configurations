@@ -14,6 +14,7 @@ def plot_training(history: History) -> None:
     """
     figure, (axis_1, axis_2) = plt.subplots(2)
 
+    # Training subplot
     axis_1.plot(history.history["accuracy"])
     axis_1.plot(history.history["loss"])
     axis_1.set_title("Training Accuracy")
@@ -21,6 +22,7 @@ def plot_training(history: History) -> None:
     axis_1.set_ylabel("Accuracy")
     axis_1.legend(["Accuracy", "Loss"])
 
+    # Validation subplot
     axis_2.plot(history.history["val_accuracy"])
     axis_2.plot(history.history["val_loss"])
     axis_2.set_title("Validation Accuracy")
@@ -30,3 +32,11 @@ def plot_training(history: History) -> None:
 
     plt.tight_layout()
     plt.show()
+
+
+def main() -> None:
+    pass
+
+
+if __name__ == "__main__":
+    main()
