@@ -1,10 +1,12 @@
 import argparse
 import tensorflow as tf
 
-from keras.callbacks import EarlyStopping, History, ModelCheckpoint, ReduceLROnPlateau
+from keras.callbacks import EarlyStopping, History, ModelCheckpoint, \
+    ReduceLROnPlateau
 from pathlib import Path
 from evaluation import plot_training
 from exploration import display_sample_image
+from preprocessing import split_validation_data
 from model import generator, initialize_simple, initialize_vgg
 
 
@@ -12,15 +14,17 @@ DATA_PATH: Path = Path("dataset")
 TRAIN_PATH: Path = DATA_PATH / "train"
 TEST_PATH: Path = DATA_PATH / "test"
 
-IMAGE_SIZE: int = 224
-BLOCK_SIZE: int = int(IMAGE_SIZE / 8)
-
 TRAIN_SIZE: int = 80_000
 TEST_SIZE: int = 20_000
-PERCENTAGE: float = 1.0
+SPLIT: float = 0.2
+
+IMAGE_SIZE: int = 224
+BLOCK_SIZE: int = int(IMAGE_SIZE / 8)
+INPUT_SHAPE: tuple = (BLOCK_SIZE, BLOCK_SIZE, 1)
 
 SEED: int = 2024
 EPOCHS: int = 100
+tf.random.set_seed(SEED)
 
 
 def main() -> None:
@@ -29,7 +33,7 @@ def main() -> None:
     amounting to a unique label for each image, this program trains,
     evaluates, and compares two models.
     """
-    tf.random.set_seed(SEED)
+    train_filepaths, val_filepaths = split_validation_data(TRAIN_PATH, SPLIT)
 
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         prog="Chess Configurations"
@@ -69,63 +73,42 @@ def main() -> None:
     )
     args: Namespace = parser.parse_args()
 
-    
-
     if args.explore:
         display_sample_image(TRAIN_PATH)
 
     if args.train:
-        early_stopping: EarlyStopping = EarlyStopping(
-            monitor="val_loss", 
-            mode="min", 
-            min_delta=0, 
-            patience=10
-        )
-        reduce_lr: ReduceLROnPlateau = ReduceLROnPlateau(
-            monitor="val_loss", 
-            mode="min",
-            min_lr=0.001,
-            patience=5
-            
-        )
+        callbacks: list = [
+            EarlyStopping(
+                monitor="val_loss", mode="min",
+                min_delta=0, patience=10
+            ),
+            ReduceLROnPlateau(
+                monitor="val_loss", mode="min",
+                min_lr=0.001, patience=5
+            ),
+            ModelCheckpoint(
+                filepath=f"models/{args.model}.h5", 
+                monitor="val_loss", mode="min",
+                verbose=1, save_best_only=True
+            )
+        ]
+        
+        match args.model:
+            case "simple":
+                model: layers.Sequential = initialize_simple(INPUT_SHAPE)
 
-        if args.model == "simple":
-            model: layers.Sequential = initialize_simple((BLOCK_SIZE, BLOCK_SIZE, 1))
-            model.summary()
-            model_checkpoint: ModelCheckpoint = ModelCheckpoint(
-                "models/simple.h5", 
-                monitor="val_loss", 
-                verbose=1, 
-                save_best_only=True, 
-                mode="min"
-            )
-            history: History = model.fit(
-                generator(TRAIN_PATH, IMAGE_SIZE, PERCENTAGE),
-                epochs=EPOCHS,
-                steps_per_epoch=(TRAIN_SIZE * PERCENTAGE) / EPOCHS,
-                validation_data=generator(TEST_PATH, IMAGE_SIZE, PERCENTAGE),
-                validation_steps=(TEST_SIZE * PERCENTAGE) / EPOCHS,
-                callbacks=[early_stopping, reduce_lr, model_checkpoint]
-            )
+            case "vgg16":
+                model: layers.Sequential = initialize_vgg(INPUT_SHAPE)
 
-        if args.model == "vgg16":
-            model: layers.Sequential = initialize_vgg((BLOCK_SIZE, BLOCK_SIZE, 1))
-            model.summary()
-            model_checkpoint: ModelCheckpoint = ModelCheckpoint(
-                "models/vgg16.h5", 
-                monitor="val_loss", 
-                verbose=1, 
-                save_best_only=True, 
-                mode="min"
-            )
-            history: History = model.fit(
-                generator(TRAIN_PATH, IMAGE_SIZE, PERCENTAGE),
-                epochs=EPOCHS,
-                steps_per_epoch=(TRAIN_SIZE * PERCENTAGE) / EPOCHS,
-                validation_data=generator(TEST_PATH, IMAGE_SIZE, PERCENTAGE),
-                validation_steps=(TEST_SIZE * PERCENTAGE) / EPOCHS,
-                callbacks=[early_stopping, reduce_lr, model_checkpoint]
-            )
+        model.summary()
+        history: History = model.fit(
+            generator(train_filepaths, IMAGE_SIZE),
+            epochs=EPOCHS,
+            steps_per_epoch=len(train_filepaths) / EPOCHS,
+            validation_data=generator(val_filepaths, IMAGE_SIZE),
+            validation_steps=len(val_filepaths) / EPOCHS,
+            callbacks=callbacks
+        )
 
         if args.evaluate:
             plot_training(history)
