@@ -1,29 +1,34 @@
 import argparse
+import keras_tuner as kt
 import tensorflow as tf
 
 from keras.callbacks import EarlyStopping, History, ModelCheckpoint, \
     ReduceLROnPlateau
 from pathlib import Path
-from evaluation import plot_training
+from prettytable import PrettyTable
+from evaluation import compare_models, plot_training
 from exploration import display_sample_image
-from preprocessing import split_validation_data
-from model import generator, initialize_simple, initialize_vgg
+from preprocessing import split_dataset
+from model import generator, initialize_lenet5, initialize_simple, \
+    initialize_vgg
 
 
 DATA_PATH: Path = Path("dataset")
 TRAIN_PATH: Path = DATA_PATH / "train"
 TEST_PATH: Path = DATA_PATH / "test"
+MODEL_PATH: Path = Path("models")
 
 TRAIN_SIZE: int = 80_000
 TEST_SIZE: int = 20_000
-SPLIT: float = 0.2
+VAL_SPLIT: float = (1 / 8)
+HT_SPLIT: float = (1 / 7)
 
 IMAGE_SIZE: int = 224
 BLOCK_SIZE: int = int(IMAGE_SIZE / 8)
 INPUT_SHAPE: tuple = (BLOCK_SIZE, BLOCK_SIZE, 1)
 
 SEED: int = 2024
-EPOCHS: int = 100
+EPOCHS: int = 30
 tf.random.set_seed(SEED)
 
 
@@ -33,7 +38,7 @@ def main() -> None:
     amounting to a unique label for each image, this program trains,
     evaluates, and compares two models.
     """
-    train_filepaths, val_filepaths = split_validation_data(TRAIN_PATH, SPLIT)
+    paths: tuple = split_dataset(TRAIN_PATH, VAL_SPLIT, HT_SPLIT)
 
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         prog="Chess Configurations"
@@ -43,24 +48,28 @@ def main() -> None:
         dest="explore",
         help="Explores data set with visualizations",
         action="store_true",
-        required=False,
         default=False
+    )
+    parser.add_argument(
+        "--hypertune", "-ht", 
+        dest="hypertune",
+        help="Sets the program to hypertune a specified model",
+        action="store_true",
+        default=True
     )
     parser.add_argument(
         "--train", "-t", 
         dest="train",
         help="Sets the program to train a specified model",
         action="store_true",
-        required=True,
-        default=True
+        default=False
     )
     parser.add_argument(
         "--model", "-m", 
         dest="model",
         help="Chooses the model to be used",
         action="store",
-        required=True,
-        choices=["simple", "vgg16"],
+        choices=["simple", "lenet5", "vgg"],
         default="simple"
     )
     parser.add_argument(
@@ -68,23 +77,42 @@ def main() -> None:
         dest="evaluate",
         help="Evaluates the trained model on the test data",
         action="store_true",
-        required=True,
-        default=True
+        default=False
     )
     args: Namespace = parser.parse_args()
 
     if args.explore:
         display_sample_image(TRAIN_PATH)
 
+    if args.hypertune:
+        match args.model:
+            case "simple":
+                hypermodel = initialize_simple
+
+            case "lenet5":
+                hypermodel = initialize_lenet5
+
+            case "vgg":
+                hypermodel = initialize_vgg
+
+        tuner: kt.BayesianOptimization = kt.BayesianOptimization(
+            hypermodel=hypermodel,
+            objective="accuracy",
+            directory="models/hypertuning",
+            project_name=f"{args.model}"
+        )
+        tuner.search(
+            generator(paths[2], IMAGE_SIZE), 
+            epochs=EPOCHS, 
+            steps_per_epoch=len(paths[2]) // EPOCHS
+        )
+
     if args.train:
         callbacks: list = [
             EarlyStopping(
-                monitor="val_loss", mode="min",
-                min_delta=0, patience=10
-            ),
-            ReduceLROnPlateau(
-                monitor="val_loss", mode="min",
-                min_lr=0.001, patience=5
+                monitor="loss", mode="min",
+                min_delta=0, patience=10,
+                verbose=1
             ),
             ModelCheckpoint(
                 filepath=f"models/{args.model}.h5", 
@@ -92,26 +120,34 @@ def main() -> None:
                 verbose=1, save_best_only=True
             )
         ]
-        
-        match args.model:
-            case "simple":
-                model: layers.Sequential = initialize_simple(INPUT_SHAPE)
 
-            case "vgg16":
-                model: layers.Sequential = initialize_vgg(INPUT_SHAPE)
-
-        model.summary()
+        model: models.Sequential = tuner.hypermodel.build(
+            tuner.get_best_hyperparameters(num_trials=1)[0]
+        )
         history: History = model.fit(
-            generator(train_filepaths, IMAGE_SIZE),
-            epochs=EPOCHS,
-            steps_per_epoch=len(train_filepaths) / EPOCHS,
-            validation_data=generator(val_filepaths, IMAGE_SIZE),
-            validation_steps=len(val_filepaths) / EPOCHS,
+            generator(paths[0], IMAGE_SIZE), 
+            epochs=EPOCHS, 
+            steps_per_epoch=len(paths[0]) // EPOCHS, 
+            validation_data=generator(paths[1], IMAGE_SIZE), 
+            validation_steps=len(paths[1]) // EPOCHS, 
             callbacks=callbacks
         )
+        plot_training(history)
 
-        if args.evaluate:
-            plot_training(history)
+    if args.evaluate:
+        scores: dict = compare_models(MODEL_PATH, TEST_PATH, IMAGE_SIZE)
+        comparison_table: PrettyTable = PrettyTable()
+        comparison_table.add_column("Models", list(scores.keys()))
+        comparison_table.add_column(
+            "Accuracy", 
+            [score[1] for score in list(scores.values())]
+        )
+        comparison_table.add_column(
+            "Loss", 
+            [score[0] for score in list(scores.values())]
+        )
+        print(comparison_table)
+
 
 
 if __name__ == "__main__":

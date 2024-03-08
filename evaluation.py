@@ -1,6 +1,12 @@
 import matplotlib.pyplot as plt
+import os
 
 from keras.callbacks import History
+from keras.models import load_model
+from pathlib import Path
+from typing import Generator
+from model import test_generator
+from preprocessing import process_dataset
 
 
 def plot_training(history: History) -> None:
@@ -34,8 +40,32 @@ def plot_training(history: History) -> None:
     plt.show()
 
 
+def compare_models(model_dir: Path, test_dir: Path, image_size: int) -> dict:
+    """
+    Evaluates the models' performance on the test dataset, then compares them
+    to each other.
+
+    Args:
+        model_dir (Path): filepath to directory containing the trained models
+        test_dir (Path): filepath to directory containing the test dataset
+        image_size (int): size to which images must be reduced
+    """
+    test_files: list = [test_dir / file for file in os.listdir(test_dir)]
+    model_names: list[str] = ["simple", "lenet5", "vgg"]
+    scores: dict = {}
+    
+    for name in model_names:
+        print("-" * 100)
+        print(f"Evaluating {name.upper()} Model".center(100))
+        print("-" * 100)
+        model: models.Sequential = load_model(model_dir / f"{name}.h5")
+        scores[name] = model.evaluate(test_generator(test_files, image_size))
+        print("\n")
+
+    return scores
+
 def main() -> None:
-    pass
+    compare_models(Path("models"), Path("dataset/test"), 224)
 
 
 if __name__ == "__main__":

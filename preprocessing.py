@@ -89,11 +89,23 @@ def transform_image(image: np.ndarray, size: int) -> np.ndarray:
     return (gray - np.min(gray)) / (np.max(gray) - np.min(gray))
 
 
-def split_validation_data(directory: Path, split: float) -> tuple[list, list]:
+def process_dataset(directory):
+    files = [directory / file for file in os.listdir(directory)]
+    X = [preprocess_image(file, 224) for file in files]
+    y = [encode_label(file.stem) for file in files]
+    return X, y
+
+
+def split_dataset(
+    directory: Path, 
+    val_split: float, 
+    ht_split: float
+) -> tuple[list, list, list]:
     """
     Given the directory containing the training data and the desired
-    percentage into which the data will be split, partitions the training data
-    into two lists containing filepaths for training and validation data.
+    percentages into which the data will be split, partitions the training
+    data into three lists containing filepaths for training, validation, and 
+    hypertuning data.
 
     Args:
         directory (Path): leads to directory which contains training data
@@ -102,19 +114,19 @@ def split_validation_data(directory: Path, split: float) -> tuple[list, list]:
     Returns:
         tuple[list, list]: contains two lists, each containing Path objects
     """
-    train_names, val_names = train_test_split(
-        os.listdir(directory),
-        test_size=split
-    )
+    train, val = train_test_split(os.listdir(directory), test_size=val_split)
+    train, ht = train_test_split(train, test_size=ht_split)
 
-    train_filepaths: list = [directory / f"{file}" for file in train_names]
-    val_filepaths: list = [directory / f"{file}" for file in val_names]
+    train_paths = [directory / file for file in train]
+    val_paths = [directory / file for file in val]
+    ht_paths = [directory / file for file in ht]
 
-    return (train_filepaths, val_filepaths)
-
-
+    return (train_paths, val_paths, ht_paths)
+        
+        
 def main() -> None:
     pass
+
 
 
 if __name__ == "__main__":

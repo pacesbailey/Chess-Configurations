@@ -2,6 +2,7 @@
 dataset/
 models/*.h5
 models/*.png
+models/hypertuning/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
