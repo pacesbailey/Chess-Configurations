@@ -64,8 +64,9 @@ def compare_models(model_dir: Path, test_dir: Path, image_size: int) -> dict:
 
     return scores
 
+
 def main() -> None:
-    compare_models(Path("models"), Path("dataset/test"), 224)
+    pass
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 import argparse
 import keras_tuner as kt
+import os
 import tensorflow as tf
 
 from keras.callbacks import EarlyStopping, History, ModelCheckpoint, \
@@ -7,7 +8,8 @@ from keras.callbacks import EarlyStopping, History, ModelCheckpoint, \
 from pathlib import Path
 from prettytable import PrettyTable
 from evaluation import compare_models, plot_training
-from exploration import display_sample_image
+from exploration import display_image_statistics, display_label_statistics, \
+    display_sample_image, get_image_statistics
 from preprocessing import split_dataset
 from model import generator, initialize_lenet5, initialize_simple, \
     initialize_vgg
@@ -82,7 +84,11 @@ def main() -> None:
     args: Namespace = parser.parse_args()
 
     if args.explore:
-        display_sample_image(TRAIN_PATH)
+        train_list: list = [TRAIN_PATH / file for file in os.listdir(TRAIN_PATH)]
+        dimensions, filenames = get_image_statistics(train_list)
+        display_image_statistics(dimensions)
+        display_label_statistics(train_list, filenames)
+        display_sample_image(paths[0])
 
     if args.hypertune:
         match args.model:
@@ -147,7 +153,6 @@ def main() -> None:
             [score[0] for score in list(scores.values())]
         )
         print(comparison_table)
-
 
 
 if __name__ == "__main__":

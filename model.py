@@ -146,7 +146,6 @@ def test_generator(file_list: list, image_size: int) -> None:
         yield x, y
     
 
-
 def main() -> None:
     pass
 
