@@ -113,7 +113,7 @@ def initialize_vgg(hp: kt.BayesianOptimization) -> models.Sequential:
     return model
 
 
-def generator(file_list: list, image_size: int) -> None:
+def train_generator(file_list: list, image_size: int) -> None:
     """
     A generator that yields the transformed images (x) and labels (y) for use 
     during the training and validation process.

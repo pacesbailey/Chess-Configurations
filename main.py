@@ -11,7 +11,7 @@ from evaluation import compare_models, plot_training
 from exploration import display_image_statistics, display_label_statistics, \
     display_sample_image, get_image_statistics
 from preprocessing import split_dataset
-from model import generator, initialize_lenet5, initialize_simple, \
+from model import train_generator, initialize_lenet5, initialize_simple, \
     initialize_vgg
 
 
@@ -108,7 +108,7 @@ def main() -> None:
             project_name=f"{args.model}"
         )
         tuner.search(
-            generator(paths[2], IMAGE_SIZE), 
+            train_generator(paths[2], IMAGE_SIZE), 
             epochs=EPOCHS, 
             steps_per_epoch=len(paths[2]) // EPOCHS
         )
@@ -131,10 +131,10 @@ def main() -> None:
             tuner.get_best_hyperparameters(num_trials=1)[0]
         )
         history: History = model.fit(
-            generator(paths[0], IMAGE_SIZE), 
+            train_generator(paths[0], IMAGE_SIZE), 
             epochs=EPOCHS, 
             steps_per_epoch=len(paths[0]) // EPOCHS, 
-            validation_data=generator(paths[1], IMAGE_SIZE), 
+            validation_data=train_generator(paths[1], IMAGE_SIZE), 
             validation_steps=len(paths[1]) // EPOCHS, 
             callbacks=callbacks
         )

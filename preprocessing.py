@@ -89,10 +89,20 @@ def transform_image(image: np.ndarray, size: int) -> np.ndarray:
     return (gray - np.min(gray)) / (np.max(gray) - np.min(gray))
 
 
-def process_dataset(directory):
-    files = [directory / file for file in os.listdir(directory)]
-    X = [preprocess_image(file, 224) for file in files]
-    y = [encode_label(file.stem) for file in files]
+def process_dataset(directory: Path) -> tuple[list, list]:
+    """
+    Applies preprocessing to files in specified directory.
+
+    Args:
+        directory (Path): contains the images
+
+    Returns:
+        tuple[list, list]: contains the processed images and their labels
+    """
+    files: list = [directory / file for file in os.listdir(directory)]
+    X: list = [preprocess_image(file, 224) for file in files]
+    y: list = [encode_label(file.stem) for file in files]
+
     return X, y
 
 
