@@ -100,4 +100,28 @@ Several models were considered, all of them being mainly focused around the usag
 
     - Dense: Softmax
 
+## Validation Results
+
+Below are graphs showing the training and validation processes for each of the models.
+
+### Simple CNN
+
+<img src="models/graphs/simple.png" width=400 height=300 />
+
+### LeNet-5
+
+<img src="models/graphs/lenet5.png" width=400 height=300 />
+
+### VGG
+
+<img src="models/graphs/vgg.png" width=400 height=300 />
+
 ## Results
+
+After the hyperparameters have been tuned and the models have been trained, they are evaluated on the test data. The resulting accuracy and loss values are reported in the table below. There is no significant difference in performance between any of the models, meaning the simple CNN model architecture could be employed to save on tuning and training time.
+
+| Models | Accuracy | Loss |
+| -: | :-: | :- |
+| Simple | 1.0 | 3.253560407756595e-06 |
+| LeNet-5 | 1.0 | 5.233120646153111e-06 |
+| VGG | 1.0 | 6.369679113049642e-07 |
